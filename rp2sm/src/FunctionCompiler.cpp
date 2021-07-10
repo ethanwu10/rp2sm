@@ -409,16 +409,16 @@ DEF_OP_COMPILE_FUNC(const_ldx) {
 	auto code = _code;
 
 	switch (opcode) {
-	case OP_MEM_LH.code:
+	case OP_CONST_LH.code:
 		// default is movsxw
 		break;
-	case OP_MEM_LB.code:
+	case OP_CONST_LB.code:
 		code[prim_op_idx] = 0xbe; // movsxb
 		break;
-	case OP_MEM_LHU.code:
+	case OP_CONST_LHU.code:
 		code[prim_op_idx] = 0xb7; // movzxw
 		break;
-	case OP_MEM_LBU.code:
+	case OP_CONST_LBU.code:
 		code[prim_op_idx] = 0xb6; // movzxw
 		break;
 	default:
