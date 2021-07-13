@@ -66,6 +66,10 @@ struct PageSizeGetter {
 		page_size(sysconf(_SC_PAGE_SIZE))
 	{}
 
+	size_t align_up(size_t l) const {
+		return (l + page_size - 1) / page_size * page_size;
+	}
+
 	constexpr operator size_t() const { return page_size; }
 };
 const PageSizeGetter page_size{};
@@ -124,10 +128,20 @@ VMContext VMContext::create(void* _code_buf, std::size_t len) {
 	VMContext ctx{};
 	Impl& impl = *ctx.impl;
 
-	impl.seg_rodata = SegmentInfo::mmap(header.sh_rodata.mem_size, PROT_READ | PROT_WRITE);
-	impl.seg_data = SegmentInfo::mmap(header.sh_data.mem_size, PROT_READ | PROT_WRITE);
-	memcpy(impl.seg_rodata.base, code_buf + header.sh_rodata.offset, header.sh_rodata.file_size);
-	memcpy(impl.seg_data.base, code_buf + header.sh_data.offset, header.sh_data.file_size);
+	{
+		impl.seg_rodata.len = page_size.align_up(header.sh_rodata.mem_size);
+		impl.seg_data.len = page_size.align_up(header.sh_data.mem_size);
+
+		impl.data_arena = SegmentInfo::mmap((1ull << 32) + impl.seg_rodata.len, PROT_NONE);
+		impl.seg_rodata.base = reinterpret_cast<uint8_t*>(impl.data_arena.base) + (1ull << 31);
+		impl.seg_data.base = reinterpret_cast<uint8_t*>(impl.seg_rodata.base) + impl.seg_rodata.len;
+
+		impl.seg_rodata.set_prot(PROT_READ | PROT_WRITE);
+		impl.seg_data.set_prot(PROT_READ | PROT_WRITE);
+
+		memcpy(impl.seg_rodata.base, code_buf + header.sh_rodata.offset, header.sh_rodata.file_size);
+		memcpy(impl.seg_data.base, code_buf + header.sh_data.offset, header.sh_data.file_size);
+	}
 	impl.seg_rodata.set_prot(PROT_READ);
 
 	impl.c_st.functions.reset(header.n_functions);
@@ -145,7 +159,7 @@ VMContext VMContext::create(void* _code_buf, std::size_t len) {
 	auto& c_st = impl.c_st;
 
 	c_st.seg_got = SegmentInfo{
-		impl.arena_ptr,
+		impl.code_arena_ptr,
 		page_size
 	};
 

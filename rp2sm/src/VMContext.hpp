@@ -16,7 +16,8 @@ namespace rp2sm {
 struct VMContext::Impl {
 	static constexpr size_t ARENA_SZ{1llu << 31};
 
-	void* arena_ptr;
+	void* code_arena_ptr;
+	SegmentInfo data_arena{};
 
 	SegmentInfo seg_rodata{};
 	SegmentInfo seg_data{};
@@ -24,7 +25,7 @@ struct VMContext::Impl {
 	CompilerState c_st{};
 
 	explicit Impl() :
-		arena_ptr(
+		code_arena_ptr(
 			mmap(nullptr, ARENA_SZ,
 				PROT_NONE,
 				MAP_PRIVATE | MAP_ANONYMOUS,
@@ -34,9 +35,8 @@ struct VMContext::Impl {
 	{}
 
 	~Impl() {
-		munmap(arena_ptr, ARENA_SZ);
-		seg_rodata.unmap();
-		seg_data.unmap();
+		munmap(code_arena_ptr, ARENA_SZ);
+		data_arena.unmap();
 	}
 
 	Impl(const Impl&) = delete;
