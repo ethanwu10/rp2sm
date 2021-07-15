@@ -1,0 +1,117 @@
+// arg0: modulus
+// arg1: n
+function entry(args: 2, ret: 1, locals: 8) {
+    // https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm#Pseudocode
+    arg.get 0
+    local.set 0 // old_r
+    arg.get 1
+    local.set 1 // r
+    /*li 1*/
+    /*local.set 2 // old_s*/
+    /*li 0*/
+    /*local.set 3 // s*/
+    li 0
+    local.set 4 // old_t
+    li 1
+    local.set 5 // t
+
+    // while r != 0
+loop_start:
+    local.get 1
+    eqz
+    br_if loop_end
+
+    local.get 0
+    local.get 1
+    call divmod
+    local.set 6 // quot
+    local.set 7 // rem
+
+    local.get 1 // r
+    local.get 7 // rem
+    local.set 1 // r
+    local.set 0 // old_r
+
+    /*local.get 3 // s*/
+    /*local.get 2 // old_s*/
+    /*local.get 3 // s*/
+    /*local.get 6 // quot*/
+    /*call mul*/
+    /*sub*/
+    /*local.set 3 // s*/
+    /*local.set 2 // old_s*/
+
+    local.get 5 // t
+    local.get 4 // old_t
+    local.get 5 // t
+    local.get 6 // quot
+    call mul
+    sub
+    local.set 5 // t
+    local.set 4 // old_t
+
+    br loop_start
+
+loop_end:
+
+    local.get 4 // old_t
+    arg.get 0
+    gtu
+    br_if add_and_ret
+    local.get 4
+    ret
+
+add_and_ret:
+    // if the value is greater than the modulus, then it's actually negative
+    local.get 4
+    arg.get 0
+    add
+}
+
+// return (arg1 / arg0), (arg1 % arg0)
+function divmod(args: 2, ret: 2, locals: 2) {
+    // local 0: loop counter
+    // local 1: remainder
+    li 0
+    local.set 0
+    arg.get 1
+    local.set 1
+loop_start:
+    local.get 1
+    arg.get 0
+    ltu
+    br_if end
+    local.get 1
+    arg.get 0
+    sub
+    local.set 1
+    local.get 0
+    li 1
+    add
+    local.set 0
+    br loop_start
+end:
+    local.get 1
+    local.get 0
+}
+
+function mul(args: 2, ret: 1, locals: 2) {
+    arg.get 0
+    local.set 0
+    li 0
+    local.set 1
+loop_start:
+    local.get 0
+    eqz; br_if end
+    local.get 0
+    li 1
+    sub
+    local.set 0
+    local.get 1
+    arg.get 1
+    add
+    local.set 1
+    br loop_start
+end:
+    local.get 1
+}
